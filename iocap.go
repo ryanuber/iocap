@@ -18,8 +18,7 @@ type Reader struct {
 	src  io.Reader
 }
 
-// NewReader creates a new limited reader over the given source reader. The
-// limit is the number of bytes allowed to be transferred per interval.
+// NewReader wraps src in a new rate limited reader.
 func NewReader(src io.Reader, opts RateOpts) *Reader {
 	return &Reader{
 		opts: opts,
@@ -34,7 +33,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	defer bucket.stop()
 
 	b := make([]byte, 1)
-	for n < cap(p) {
+	for n < len(p) {
 		bucket.wait()
 		_, err = r.src.Read(b)
 		if err != nil {
@@ -44,6 +43,38 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 			return
 		}
 		n += copy(p[n:], b)
+	}
+	return
+}
+
+// Writer implements the io.Writer interface and limits the rate at which
+// bytes are written to the underlying writer.
+type Writer struct {
+	opts RateOpts
+	dst  io.Writer
+}
+
+// NewWriter wraps dst in a new rate limited writer.
+func NewWriter(dst io.Writer, opts RateOpts) *Writer {
+	return &Writer{
+		opts: opts,
+		dst:  dst,
+	}
+}
+
+// Write writes len(p) bytes onto the underlying io.Writer, respecting the
+// configured rate limit options.
+func (w *Writer) Write(p []byte) (n int, err error) {
+	bucket := newBucket(w.opts)
+	defer bucket.stop()
+
+	for n < len(p) {
+		bucket.wait()
+		_, err = w.dst.Write(p[n : n+1])
+		if err != nil {
+			return
+		}
+		n++
 	}
 	return
 }
