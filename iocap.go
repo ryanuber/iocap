@@ -68,7 +68,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	defer bucket.stop()
 
 	for n < len(p) {
-		v := bucket.wait(len(p))
+		v := bucket.wait(len(p) - n)
 		v, err = w.dst.Write(p[n : n+v])
 		if err != nil {
 			return
