@@ -14,16 +14,16 @@ type RateOpts struct {
 // Reader implements the io.Reader interface and limits the rate at which
 // bytes come off of the underlying source reader.
 type Reader struct {
-	opts   RateOpts
-	source io.Reader
+	opts RateOpts
+	src  io.Reader
 }
 
 // NewReader creates a new limited reader over the given source reader. The
 // limit is the number of bytes allowed to be transferred per interval.
-func NewReader(source io.Reader, o RateOpts) *Reader {
+func NewReader(src io.Reader, opts RateOpts) *Reader {
 	return &Reader{
-		opts:   o,
-		source: source,
+		opts: opts,
+		src:  src,
 	}
 }
 
@@ -36,7 +36,7 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	b := make([]byte, 1)
 	for n < cap(p) {
 		bucket.wait()
-		_, err = r.source.Read(b)
+		_, err = r.src.Read(b)
 		if err != nil {
 			if err == io.EOF {
 				err = nil
@@ -48,12 +48,12 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return
 }
 
-// PerMinute returns a RateOptions configured for the given rate per minute.
+// PerMinute returns a RateOpts configured for the given rate per minute.
 func PerMinute(n int) RateOpts {
 	return RateOpts{time.Minute, n}
 }
 
-// PerSecond returns a RateOptions configured for the given rate per second.
+// PerSecond returns a RateOpts configured for the given rate per second.
 func PerSecond(n int) RateOpts {
 	return RateOpts{time.Second, n}
 }
@@ -79,7 +79,8 @@ func newBucket(opts RateOpts) *bucket {
 			case <-time.After(opts.D / time.Duration(opts.N)):
 				select {
 				case <-b.tokenCh:
-				default:
+				case <-b.doneCh:
+					return
 				}
 			}
 		}
