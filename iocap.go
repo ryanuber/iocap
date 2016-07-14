@@ -32,17 +32,16 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	bucket := newBucket(r.opts)
 	defer bucket.stop()
 
-	b := make([]byte, 1)
 	for n < len(p) {
-		bucket.wait()
-		_, err = r.src.Read(b)
+		v := bucket.wait(len(p) - n)
+		v, err = r.src.Read(p[n : n+v])
 		if err != nil {
 			if err == io.EOF {
 				err = nil
 			}
 			return
 		}
-		n += copy(p[n:], b)
+		n += v
 	}
 	return
 }
@@ -69,12 +68,12 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	defer bucket.stop()
 
 	for n < len(p) {
-		bucket.wait()
-		_, err = w.dst.Write(p[n : n+1])
+		v := bucket.wait(len(p))
+		v, err = w.dst.Write(p[n : n+v])
 		if err != nil {
 			return
 		}
-		n++
+		n += v
 	}
 	return
 }
@@ -124,7 +123,23 @@ func (b *bucket) stop() {
 	close(b.doneCh)
 }
 
-// wait blocks until there is room in the bucket for a token insert.
-func (b *bucket) wait() {
-	b.tokenCh <- struct{}{}
+// wait is used to wait for n tokens to fit into the bucket. The token
+// insert is best-effort, and the actual number of tokens inserted is
+// returned. This allows grabbing a bulk of tokens in a single pass.
+// wait will block until at least one token is inserted.
+func (b *bucket) wait(n int) int {
+	v := 0
+	for i := 0; i < n; i++ {
+		select {
+		case b.tokenCh <- struct{}{}:
+			v++
+		default:
+			if i > 0 {
+				break
+			}
+			b.tokenCh <- struct{}{}
+			v++
+		}
+	}
+	return v
 }
