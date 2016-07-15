@@ -19,7 +19,7 @@ func TestNewBucket(t *testing.T) {
 
 func TestBucketWait(t *testing.T) {
 	// First create a bucket and exhaust the tokenCh
-	b := newBucket(RateOpts{time.Second, 256})
+	b := newBucket(RateOpts{100 * time.Millisecond, 256})
 	for i := 0; i < 256; i++ {
 		b.tokenCh <- struct{}{}
 	}
@@ -36,7 +36,7 @@ func TestBucketWait(t *testing.T) {
 
 	// Next token insert should block until the drain interval
 	n = b.wait(128)
-	if time.Since(start) < time.Second {
+	if time.Since(start) < 100*time.Millisecond {
 		t.Fatal("should block")
 	}
 	if n != 128 {
@@ -56,7 +56,7 @@ func TestBucketWait(t *testing.T) {
 }
 
 func TestBucketDrain(t *testing.T) {
-	b := newBucket(RateOpts{time.Second, 256})
+	b := newBucket(RateOpts{100 * time.Millisecond, 256})
 
 	// Place a token in the bucket for draining
 	b.wait(1)
@@ -70,7 +70,7 @@ func TestBucketDrain(t *testing.T) {
 	// Waits for the next interval and drains when wait is true
 	start := time.Now()
 	b.drain(true)
-	if time.Since(start) < time.Second {
+	if time.Since(start) < 100*time.Millisecond {
 		t.Fatal("should block")
 	}
 	if len(b.tokenCh) != 0 {
