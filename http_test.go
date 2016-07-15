@@ -3,6 +3,7 @@ package iocap
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +19,7 @@ func TestLimitHandler(t *testing.T) {
 	}
 
 	// Start the wrapped HTTP server with an applied rate limit.
-	ts := httptest.NewServer(LimitHTTPHandler(http.HandlerFunc(
+	ts := httptest.NewServer(LimitHandler(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Write(data)
 		}), RateOpts{100 * time.Millisecond, 128}))
@@ -48,4 +49,65 @@ func TestLimitHandler(t *testing.T) {
 	if !bytes.Equal(out, data) {
 		t.Fatal("unexpected data returned")
 	}
+}
+
+func ExampleLimitHandler() {
+	// Create a normal HTTP handler to serve data.
+	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello world!"))
+	}))
+
+	// Wrap the handler with a rate limit.
+	rate := PerSecond(8) // 8B/s
+	h = LimitHandler(h, rate)
+
+	// Start a test server using the rate limited handler.
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// Make a request to the server.
+	resp, err := http.Get(ts.URL)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(string(body))
+	// Output: hello world!
+}
+
+func ExampleLimitResponseWriter() {
+	// Create an HTTP handler with a rate limited response writer.
+	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w = LimitResponseWriter(w, PerSecond(8)) // 8B/s
+		w.Write([]byte("hello world!"))
+	})
+
+	// Start a test server using the handler.
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// Make a request to the server.
+	resp, err := http.Get(ts.URL)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(string(body))
+	// Output: hello world!
 }

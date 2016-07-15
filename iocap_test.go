@@ -3,6 +3,7 @@ package iocap
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -82,4 +83,43 @@ func TestPerSecond(t *testing.T) {
 	if ro.n != 128 {
 		t.Fatalf("expect 128, got: %d", ro.n)
 	}
+}
+
+func ExampleReader() {
+	// Create a buffer to read from.
+	buf := bytes.NewBufferString("hello world!")
+
+	// Create the rate limited reader.
+	rate := PerSecond(8) // 8B/s
+	r := NewReader(buf, rate)
+
+	// Read from the reader.
+	out := make([]byte, buf.Len())
+	n, err := r.Read(out)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(n, string(out))
+	// Output: 12 hello world!
+}
+
+func ExampleWriter() {
+	// Create the buffer to write to.
+	buf := new(bytes.Buffer)
+
+	// Create the rate limited writer.
+	rate := PerSecond(8) // 8B/s
+	r := NewWriter(buf, rate)
+
+	// Write data into the writer.
+	n, err := r.Write([]byte("hello world!"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(n, buf.String())
+	// Output: 12 hello world!
 }

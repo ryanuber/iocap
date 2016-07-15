@@ -2,16 +2,16 @@ package iocap
 
 import "net/http"
 
-// LimitedHTTPHandler is a wrapper over a normal http.Handler, allowing the
+// LimitedHandler is a wrapper over a normal http.Handler, allowing the
 // rate to be controlled while sending data back to clients.
-type LimitedHTTPHandler struct {
+type LimitedHandler struct {
 	h    http.Handler
 	opts RateOpts
 }
 
-// LimitHTTPHandler creates a new rate limited HTTP handler wrapper.
-func LimitHTTPHandler(h http.Handler, opts RateOpts) *LimitedHTTPHandler {
-	return &LimitedHTTPHandler{
+// LimitHandler creates a new rate limited HTTP handler wrapper.
+func LimitHandler(h http.Handler, opts RateOpts) *LimitedHandler {
+	return &LimitedHandler{
 		h:    h,
 		opts: opts,
 	}
@@ -19,7 +19,7 @@ func LimitHTTPHandler(h http.Handler, opts RateOpts) *LimitedHTTPHandler {
 
 // ServeHTTP implements the http.Handler interface, writing responses using
 // a rate limited response writer.
-func (h *LimitedHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *LimitedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.h.ServeHTTP(LimitResponseWriter(w, h.opts), r)
 }
 
