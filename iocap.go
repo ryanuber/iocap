@@ -24,15 +24,20 @@ func NewReader(src io.Reader, opts RateOpts) *Reader {
 // limiting. Reads until EOF or until p is filled.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	for n < len(p) {
+		// Ask for enough space to fit all remaining bytes
 		v := r.bucket.wait(len(p) - n)
+
+		// Read from src into the byte range in p
 		v, err = r.src.Read(p[n : n+v])
+
+		// Count the actual number of bytes read.
+		n += v
+
+		// Return any errors from the underlying reader. Preserves the
+		// underlying implementation's functionality.
 		if err != nil {
-			if err == io.EOF {
-				err = nil
-			}
 			return
 		}
-		n += v
 	}
 	return
 }
@@ -56,12 +61,20 @@ func NewWriter(dst io.Writer, opts RateOpts) *Writer {
 // configured rate limit options.
 func (w *Writer) Write(p []byte) (n int, err error) {
 	for n < len(p) {
+		// Ask for enough space to write p completely.
 		v := w.bucket.wait(len(p) - n)
+
+		// Write from the byte offset on p into the writer.
 		v, err = w.dst.Write(p[n : n+v])
+
+		// Count the actual bytes written.
+		n += v
+
+		// Return any errors from the underlying writer. Preserves the
+		// underlying implementation's functionality.
 		if err != nil {
 			return
 		}
-		n += v
 	}
 	return
 }
