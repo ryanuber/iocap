@@ -146,7 +146,7 @@ func ExampleReader() {
 	buf := bytes.NewBufferString("hello world!")
 
 	// Create the rate limited reader.
-	rate := PerSecond(8) // 8B/s
+	rate := PerSecond(128 * 1024) // 128K/s
 	r := NewReader(buf, rate)
 
 	// Read from the reader.
@@ -166,7 +166,7 @@ func ExampleWriter() {
 	buf := new(bytes.Buffer)
 
 	// Create the rate limited writer.
-	rate := PerSecond(8) // 8B/s
+	rate := PerSecond(128 * 1024) // 128K/s
 	r := NewWriter(buf, rate)
 
 	// Write data into the writer.
@@ -178,4 +178,31 @@ func ExampleWriter() {
 
 	fmt.Println(n, buf.String())
 	// Output: 12 hello world!
+}
+
+func ExampleGroup() {
+	// Create a rate limiting group.
+	rate := PerSecond(128 * 1024) // 128K/s
+	g := NewGroup(rate)
+
+	// Create a new reader and writer on the group.
+	buf := new(bytes.Buffer)
+	r := g.NewReader(buf)
+	w := g.NewWriter(buf)
+
+	// Reader and writer are rate limited together
+	n, err := w.Write([]byte("hello world!"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	out := make([]byte, n)
+	_, err = r.Read(out)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(string(out))
+	// Output: hello world!
 }
