@@ -13,18 +13,24 @@ import (
 	"github.com/ryanuber/iocap"
 )
 
-func TestLimitHandler(t *testing.T) {
+func TestHandler(t *testing.T) {
 	// Create some random data for the response body.
 	data := make([]byte, 512)
 	if _, err := rand.Read(data); err != nil {
 		t.Fatalf("err: %v", err)
 	}
 
-	// Start the wrapped HTTP server with an applied rate limit.
-	ts := httptest.NewServer(LimitHandler(http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			w.Write(data)
-		}), iocap.RateOpts{Interval: 100 * time.Millisecond, Size: 128}))
+	// Create a normal HTTP handler to return data.
+	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(data)
+	}))
+
+	// Wrap the handler with a rate limit.
+	rate := iocap.RateOpts{Interval: 100 * time.Millisecond, Size: 128}
+	h = Handler(h, rate)
+
+	// Start the wrapped HTTP server.
+	ts := httptest.NewServer(h)
 	defer ts.Close()
 
 	// Record the start time and perform the request.
@@ -53,7 +59,7 @@ func TestLimitHandler(t *testing.T) {
 	}
 }
 
-func ExampleLimitHandler() {
+func ExampleHandler() {
 	// Create a normal HTTP handler to serve data.
 	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world!"))
@@ -61,7 +67,7 @@ func ExampleLimitHandler() {
 
 	// Wrap the handler with a rate limit.
 	rate := iocap.PerSecond(1024 * 128) // 128K/s
-	h = LimitHandler(h, rate)
+	h = Handler(h, rate)
 
 	// Start a test server using the rate limited handler.
 	ts := httptest.NewServer(h)
@@ -85,10 +91,10 @@ func ExampleLimitHandler() {
 	// Output: hello world!
 }
 
-func ExampleLimitResponseWriter() {
+func ExampleResponseWriter() {
 	// Create an HTTP handler with a rate limited response writer.
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w = LimitResponseWriter(w, iocap.PerSecond(1024*128)) // 128K/s
+		w = ResponseWriter(w, iocap.PerSecond(1024*128)) // 128K/s
 		w.Write([]byte("hello world!"))
 	})
 
