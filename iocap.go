@@ -72,12 +72,7 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return
 }
 
-// PerMinute returns a RateOpts configured for the given rate per minute.
-func PerMinute(n int) RateOpts {
-	return RateOpts{time.Minute, n}
-}
-
-// PerSecond returns a RateOpts configured for the given rate per second.
+// PerSecond returns a RateOpts configured to allow n bytes per second.
 func PerSecond(n int) RateOpts {
 	return RateOpts{time.Second, n}
 }
