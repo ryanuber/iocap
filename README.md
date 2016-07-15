@@ -9,13 +9,10 @@ Go package for rate limiting data streams using the familiar `io.Reader` and
 
 `iocap` provides simple wrappers over arbitrary `io.Reader` and `io.Writer`
 instances to allow throttling throughput of either read or write operations.
+Data streams can be rate limited individually or grouped together to provide an
+aggregate rate over multiple operations.
 
 For examples and usage, see the [godoc][].
-
-## Features
-
-* Rate limit any `io.Reader` or `io.Writer`
-* Rate limit any `http.Handler` or `http.ResponseWriter`
 
 ## How it works
 
