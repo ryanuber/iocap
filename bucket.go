@@ -53,27 +53,39 @@ func (b *bucket) wait(n int) (v int) {
 // will wait until the next drain cycle and then continue. Otherwise,
 // drain only drains the bucket if it is due.
 func (b *bucket) drain(wait bool) {
+DRAIN:
 	b.RLock()
 	last := b.drained
 	b.RUnlock()
 
-	if wait {
-		delay := last.Add(b.opts.Interval).Sub(time.Now())
-		time.Sleep(delay)
-	}
-
-	if time.Since(last) >= b.opts.Interval {
+	switch {
+	case time.Since(last) >= b.opts.Interval:
 		b.Lock()
 		defer b.Unlock()
 
-	DRAIN:
+		// Make sure the timestamp was not updated; prevents a time-of-
+		// check vs. time-of-use error.
+		if !b.drained.Equal(last) {
+			return
+		}
+
+		// Update the drain timestamp at exit.
+		defer func() {
+			b.drained = time.Now()
+		}()
+
+		// Drain the bucket.
 		for i := 0; i < b.opts.Size; i++ {
 			select {
 			case <-b.tokenCh:
 			default:
-				break DRAIN
+				return
 			}
 		}
-		b.drained = time.Now()
+
+	case wait:
+		delay := last.Add(b.opts.Interval).Sub(time.Now())
+		time.Sleep(delay)
+		goto DRAIN
 	}
 }
