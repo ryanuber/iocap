@@ -68,8 +68,11 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 
 // RateOpts is used to encapsulate rate limiting options.
 type RateOpts struct {
-	D time.Duration
-	N int
+	// d is the time period of the rate
+	d time.Duration
+
+	// n is the number of bytes per interval
+	n int
 }
 
 // PerSecond returns a RateOpts configured to allow n bytes per second.

@@ -9,7 +9,7 @@ import (
 func TestNewBucket(t *testing.T) {
 	opts := RateOpts{0, 256}
 	b := newBucket(opts)
-	if n := cap(b.tokenCh); n != opts.N {
+	if n := cap(b.tokenCh); n != opts.n {
 		t.Fatalf("expect size 256, got %d", n)
 	}
 	if !reflect.DeepEqual(b.opts, opts) {

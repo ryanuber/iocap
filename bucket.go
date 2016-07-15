@@ -14,7 +14,7 @@ type bucket struct {
 // newBucket creates a new bucket to use for readers and writers.
 func newBucket(opts RateOpts) *bucket {
 	return &bucket{
-		tokenCh: make(chan struct{}, opts.N),
+		tokenCh: make(chan struct{}, opts.n),
 		opts:    opts,
 	}
 }
@@ -49,15 +49,15 @@ func (b *bucket) wait(n int) (v int) {
 // drain only drains the bucket if it is due.
 func (b *bucket) drain(wait bool) {
 	if wait {
-		delay := b.drained.Add(b.opts.D).Sub(time.Now())
+		delay := b.drained.Add(b.opts.d).Sub(time.Now())
 		time.Sleep(delay)
 	}
 
-	if time.Since(b.drained) >= b.opts.D {
+	if time.Since(b.drained) >= b.opts.d {
 		defer func() {
 			b.drained = time.Now()
 		}()
-		for i := 0; i < b.opts.N; i++ {
+		for i := 0; i < b.opts.n; i++ {
 			select {
 			case <-b.tokenCh:
 			default:
