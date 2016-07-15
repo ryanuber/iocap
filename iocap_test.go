@@ -17,7 +17,7 @@ func TestReader(t *testing.T) {
 	buf := bytes.NewBuffer(data)
 
 	// Create the Reader with a rate limit applied.
-	r := NewReader(buf, RateOpts{100 * time.Millisecond, 128})
+	r := NewReader(buf, RateOpts{Interval: 100 * time.Millisecond, Size: 128})
 	out := make([]byte, 512)
 
 	// Record the start time and execute the read.
@@ -52,7 +52,7 @@ func TestWriter(t *testing.T) {
 
 	// Create the writer with an applied rate limit.
 	buf := new(bytes.Buffer)
-	w := NewWriter(buf, RateOpts{100 * time.Millisecond, 128})
+	w := NewWriter(buf, RateOpts{Interval: 100 * time.Millisecond, Size: 128})
 
 	// Record the start time and perform the write.
 	start := time.Now()
@@ -77,11 +77,11 @@ func TestWriter(t *testing.T) {
 
 func TestPerSecond(t *testing.T) {
 	ro := PerSecond(128)
-	if ro.d != time.Second {
-		t.Fatalf("expect 1s, got: %s", ro.d)
+	if ro.Interval != time.Second {
+		t.Fatalf("expect 1s, got: %s", ro.Interval)
 	}
-	if ro.n != 128 {
-		t.Fatalf("expect 128, got: %d", ro.n)
+	if ro.Size != 128 {
+		t.Fatalf("expect 128, got: %d", ro.Size)
 	}
 }
 

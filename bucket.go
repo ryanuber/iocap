@@ -1,6 +1,9 @@
 package iocap
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 // bucket is a simple "leaky bucket" abstraction to provide a way to
 // limit the number of operations (in this case, byte reads/writes)
@@ -9,12 +12,14 @@ type bucket struct {
 	tokenCh chan struct{}
 	opts    RateOpts
 	drained time.Time
+
+	sync.RWMutex
 }
 
 // newBucket creates a new bucket to use for readers and writers.
 func newBucket(opts RateOpts) *bucket {
 	return &bucket{
-		tokenCh: make(chan struct{}, opts.n),
+		tokenCh: make(chan struct{}, opts.Size),
 		opts:    opts,
 	}
 }
@@ -48,21 +53,27 @@ func (b *bucket) wait(n int) (v int) {
 // will wait until the next drain cycle and then continue. Otherwise,
 // drain only drains the bucket if it is due.
 func (b *bucket) drain(wait bool) {
+	b.RLock()
+	last := b.drained
+	b.RUnlock()
+
 	if wait {
-		delay := b.drained.Add(b.opts.d).Sub(time.Now())
+		delay := last.Add(b.opts.Interval).Sub(time.Now())
 		time.Sleep(delay)
 	}
 
-	if time.Since(b.drained) >= b.opts.d {
-		defer func() {
-			b.drained = time.Now()
-		}()
-		for i := 0; i < b.opts.n; i++ {
+	if time.Since(last) >= b.opts.Interval {
+		b.Lock()
+		defer b.Unlock()
+
+	DRAIN:
+		for i := 0; i < b.opts.Size; i++ {
 			select {
 			case <-b.tokenCh:
 			default:
-				return
+				break DRAIN
 			}
 		}
+		b.drained = time.Now()
 	}
 }

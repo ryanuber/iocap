@@ -9,7 +9,7 @@ import (
 func TestNewBucket(t *testing.T) {
 	opts := RateOpts{0, 256}
 	b := newBucket(opts)
-	if n := cap(b.tokenCh); n != opts.n {
+	if n := cap(b.tokenCh); n != opts.Size {
 		t.Fatalf("expect size 256, got %d", n)
 	}
 	if !reflect.DeepEqual(b.opts, opts) {
@@ -19,7 +19,7 @@ func TestNewBucket(t *testing.T) {
 
 func TestBucketWait(t *testing.T) {
 	// First create a bucket and exhaust the tokenCh
-	b := newBucket(RateOpts{100 * time.Millisecond, 256})
+	b := newBucket(RateOpts{Interval: 100 * time.Millisecond, Size: 256})
 	for i := 0; i < 256; i++ {
 		b.tokenCh <- struct{}{}
 	}
@@ -56,7 +56,7 @@ func TestBucketWait(t *testing.T) {
 }
 
 func TestBucketDrain(t *testing.T) {
-	b := newBucket(RateOpts{100 * time.Millisecond, 256})
+	b := newBucket(RateOpts{Interval: 100 * time.Millisecond, Size: 256})
 
 	// Place a token in the bucket for draining
 	b.wait(1)

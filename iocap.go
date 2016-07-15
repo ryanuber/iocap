@@ -81,14 +81,44 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 
 // RateOpts is used to encapsulate rate limiting options.
 type RateOpts struct {
-	// d is the time period of the rate
-	d time.Duration
+	// Interval is the time period of the rate
+	Interval time.Duration
 
-	// n is the number of bytes per interval
-	n int
+	// Size is the number of bytes per interval
+	Size int
 }
 
 // PerSecond returns a RateOpts configured to allow n bytes per second.
 func PerSecond(n int) RateOpts {
-	return RateOpts{time.Second, n}
+	return RateOpts{
+		Interval: time.Second,
+		Size:     n,
+	}
+}
+
+// Group is used to group multiple readers and/or writers onto the same bucket,
+// thus enforcing the rate limit across multiple independent processes.
+type Group struct {
+	bucket *bucket
+}
+
+// NewGroup creates a new rate limiting group with the specific rate.
+func NewGroup(opts RateOpts) *Group {
+	return &Group{newBucket(opts)}
+}
+
+// NewWriter creates and returns a new writer in the group.
+func (g *Group) NewWriter(dst io.Writer) *Writer {
+	return &Writer{
+		dst:    dst,
+		bucket: g.bucket,
+	}
+}
+
+// NewReader creates and returns a new reader in the group.
+func (g *Group) NewReader(src io.Reader) *Reader {
+	return &Reader{
+		src:    src,
+		bucket: g.bucket,
+	}
 }

@@ -1,4 +1,4 @@
-package iocap
+package httpcap
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/ryanuber/iocap"
 )
 
 func TestLimitHandler(t *testing.T) {
@@ -22,7 +24,7 @@ func TestLimitHandler(t *testing.T) {
 	ts := httptest.NewServer(LimitHandler(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Write(data)
-		}), RateOpts{100 * time.Millisecond, 128}))
+		}), iocap.RateOpts{Interval: 100 * time.Millisecond, Size: 128}))
 	defer ts.Close()
 
 	// Record the start time and perform the request.
@@ -58,7 +60,7 @@ func ExampleLimitHandler() {
 	}))
 
 	// Wrap the handler with a rate limit.
-	rate := PerSecond(8) // 8B/s
+	rate := iocap.PerSecond(1024 * 128) // 128K/s
 	h = LimitHandler(h, rate)
 
 	// Start a test server using the rate limited handler.
@@ -86,7 +88,7 @@ func ExampleLimitHandler() {
 func ExampleLimitResponseWriter() {
 	// Create an HTTP handler with a rate limited response writer.
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w = LimitResponseWriter(w, PerSecond(8)) // 8B/s
+		w = LimitResponseWriter(w, iocap.PerSecond(1024*128)) // 128K/s
 		w.Write([]byte("hello world!"))
 	})
 
