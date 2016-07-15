@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 )
@@ -72,6 +73,61 @@ func TestWriter(t *testing.T) {
 	}
 	if !bytes.Equal(buf.Bytes(), data) {
 		t.Fatal("unexpected data written")
+	}
+}
+
+func TestGroup(t *testing.T) {
+	// Create the rate limiting group.
+	g := NewGroup(RateOpts{Interval: 100 * time.Millisecond, Size: 8})
+
+	// Create two buffers; one for the reader, one for the writer. The
+	// idea is that these are completely separate buffers, maybe completely
+	// unrelated in terms of the operation being performed on them.
+	// Regardless, we want to ensure that operations across both share the
+	// rate limit of the group.
+	bufW := new(bytes.Buffer)
+	bufR := new(bytes.Buffer)
+
+	// Set up the data for the reader/writer
+	in := []byte("hello world!")
+	bufR.Write(in)
+	out := make([]byte, len(in))
+
+	// Create a reader and writer in the group against the buffers.
+	w := g.NewWriter(bufW)
+	r := g.NewReader(bufR)
+
+	// Mark the start time and perform the read and write in parallel.
+	start := time.Now()
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+
+		if _, err := w.Write(in); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+
+		if _, err := r.Read(out); err != nil {
+			t.Fatalf("err: %v", err)
+		}
+	}()
+
+	// Wait for both operations to finish.
+	wg.Wait()
+
+	// Make sure we blocked for at least 2 intervals. If each operation
+	// had its own 8B/s limit, we would finish in ~100ms, but because we
+	// are sharing the limit, pushing 24 bytes through is going to require
+	// two bucket drains before it completes.
+	if d := time.Since(start); d < 200*time.Millisecond {
+		t.Fatalf("finished too quickly in %s", d)
 	}
 }
 
