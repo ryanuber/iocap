@@ -1,8 +1,6 @@
 package iocap
 
-import (
-	"net/http"
-)
+import "net/http"
 
 // LimitedHTTPHandler is a wrapper over a normal http.Handler, allowing the
 // rate to be controlled while sending data back to clients.
