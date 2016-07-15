@@ -51,7 +51,7 @@ func TestBucketWait(t *testing.T) {
 		t.Fatal("should insert immediately")
 	}
 	if n != 128 {
-		t.Fatal("expect 128, got: %d", n)
+		t.Fatalf("expect 128, got: %d", n)
 	}
 }
 
