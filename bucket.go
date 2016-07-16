@@ -53,7 +53,6 @@ func (b *bucket) wait(n int) (v int) {
 // will wait until the next drain cycle and then continue. Otherwise,
 // drain only drains the bucket if it is due.
 func (b *bucket) drain(wait bool) {
-DRAIN:
 	b.RLock()
 	last := b.drained
 	b.RUnlock()
@@ -86,6 +85,6 @@ DRAIN:
 	case wait:
 		delay := last.Add(b.opts.Interval).Sub(time.Now())
 		time.Sleep(delay)
-		goto DRAIN
+		b.drain(false)
 	}
 }
