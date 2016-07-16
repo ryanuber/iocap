@@ -91,6 +91,13 @@ INSERT:
 // drain is used to drain the bucket of tokens. If wait is true, drain
 // will wait until the next drain cycle and then continue. Otherwise,
 // drain only drains the bucket if it is due.
+//
+// This implementation is heavy-handed in that it brackets "leaking" tokens
+// to the full duration of the configured interval. In other words, the
+// bucket leaks not in single drops, but rather multiples, and only when the
+// token drain window has elapsed. This side-steps near-hot-looping with
+// dense token expiration (short interval + high size) and heavy lock
+// contention. A possible enhancement would be to make this more granular.
 func (b *bucket) drain(wait bool) {
 	b.tokenLock.RLock()
 	last := b.drained
