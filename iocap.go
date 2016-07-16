@@ -25,7 +25,7 @@ func NewReader(src io.Reader, opts RateOpts) *Reader {
 func (r *Reader) Read(p []byte) (n int, err error) {
 	for n < len(p) {
 		// Ask for enough space to fit all remaining bytes
-		v := r.bucket.wait(len(p) - n)
+		v := r.bucket.insert(len(p) - n)
 
 		// Read from src into the byte range in p
 		v, err = r.src.Read(p[n : n+v])
@@ -62,7 +62,7 @@ func NewWriter(dst io.Writer, opts RateOpts) *Writer {
 func (w *Writer) Write(p []byte) (n int, err error) {
 	for n < len(p) {
 		// Ask for enough space to write p completely.
-		v := w.bucket.wait(len(p) - n)
+		v := w.bucket.insert(len(p) - n)
 
 		// Write from the byte offset on p into the writer.
 		v, err = w.dst.Write(p[n : n+v])

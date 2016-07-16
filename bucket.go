@@ -30,29 +30,14 @@ func newBucket(opts RateOpts) *bucket {
 	}
 }
 
-// wait is used to wait for n tokens to fit into the bucket. The token
-// insert is best-effort, and the actual number of tokens inserted is
-// returned. This allows grabbing a bulk of tokens in a single pass.
-// wait will block until at least one token is inserted.
-func (b *bucket) wait(n int) (v int) {
+// insert performs a best-effort token insert of n tokens. v contains
+// the number of tokens inserted, which will differ from n if the
+// bucket overflows. insert will block until at least one token is
+// successfully inserted.
+func (b *bucket) insert(n int) (v int) {
 	// Call a non-blocking drain up-front to make room for tokens.
 	b.drain(false)
 
-	for v == 0 {
-		v = b.insert(n)
-		if v == 0 {
-			// Call a blocking drain, because the bucket cannot
-			// make progress until the drain interval arrives.
-			b.drain(true)
-		}
-	}
-	return
-}
-
-// insert attempts to insert n tokens into the bucket, returning the
-// actual number of tokens inserted. If the bucket overflows, v can
-// differ from n.
-func (b *bucket) insert(n int) (v int) {
 INSERT:
 	var remain int
 
@@ -62,14 +47,19 @@ INSERT:
 
 	switch {
 	case tokens == b.opts.Size:
-		v = 0
-		return
+		// Bucket is full. Call a blocking drain to wait for the next
+		// drain interval (earliest we can insert more tokens).
+		b.drain(true)
+		goto INSERT
 
 	case tokens+n > b.opts.Size:
+		// Some tokens, but not all, were inserted. The bucket is now
+		// full and subsequent inserts will overflow and block.
 		v = b.opts.Size - tokens
 		remain = b.opts.Size
 
 	default:
+		// All tokens inserted successfully.
 		v = n
 		remain = tokens + n
 	}
