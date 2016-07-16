@@ -1,28 +1,13 @@
 package iocap
 
 import (
-	"reflect"
 	"testing"
 	"time"
 )
 
-func TestNewBucket(t *testing.T) {
-	opts := RateOpts{0, 256}
-	b := newBucket(opts)
-	if n := cap(b.tokenCh); n != opts.Size {
-		t.Fatalf("expect size 256, got %d", n)
-	}
-	if !reflect.DeepEqual(b.opts, opts) {
-		t.Fatalf("expect: %#v\nactual: %#v", opts, b.opts)
-	}
-}
-
 func TestBucketWait(t *testing.T) {
-	// First create a bucket and exhaust the tokenCh
+	// First create a bucket.
 	b := newBucket(RateOpts{Interval: 100 * time.Millisecond, Size: 256})
-	for i := 0; i < 256; i++ {
-		b.tokenCh <- struct{}{}
-	}
 
 	// Returns immediately if tokens are all inserted
 	start := time.Now()
@@ -63,7 +48,7 @@ func TestBucketDrain(t *testing.T) {
 
 	// Doesn't drain if the expiration isn't passed.
 	b.drain(false)
-	if len(b.tokenCh) != 1 {
+	if b.tokens != 1 {
 		t.Fatal("should not drain tokens")
 	}
 
@@ -73,7 +58,7 @@ func TestBucketDrain(t *testing.T) {
 	if time.Since(start) < 100*time.Millisecond {
 		t.Fatal("should block")
 	}
-	if len(b.tokenCh) != 0 {
+	if b.tokens != 0 {
 		t.Fatal("should drain tokens")
 	}
 }
