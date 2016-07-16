@@ -107,13 +107,11 @@ func (b *bucket) drain(wait bool) {
 			return
 		}
 
-		// Update the drain timestamp at exit.
-		defer func() {
-			b.drained = time.Now()
-		}()
-
 		// Drain the bucket.
 		b.tokens = 0
+
+		// Update the drain timestamp.
+		b.drained = time.Now()
 
 	case wait:
 		delay := last.Add(b.opts.Interval).Sub(time.Now())
