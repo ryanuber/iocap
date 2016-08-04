@@ -2,9 +2,11 @@
 Package iocap provides rate limiting for data streams using the familiar
 io.Reader and io.Writer interfaces.
 
-Rate limits are expressed in bytes per second by calling PerSecond:
+Rates can be expressed in a few different units using helper functions:
 
-	rate := iocap.PerSecond(512*1024) // 512K/s
+	rate := iocap.Kbps(512) // Kilobits/s
+	rate := iocap.Mbps(10)  // Megabits/s
+	rate := iocap.Gbps(1)   // Gigabits/s
 
 Readers and Writers are created by passing in an existing io.Reader or
 io.Writer along with a rate.

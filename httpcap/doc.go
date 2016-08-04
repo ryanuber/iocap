@@ -7,13 +7,8 @@ basis, or using a rate limiting group.
 	h = httpcap.Handler(h, rate)
 	...
 	g := iocap.NewGroup(rate)
-	h = httpcap.HandlerGroup(h, g)
+	h = httpcap.GroupHandler(h, g)
 
-Rate limiting can be applied to an http.ResponseWriter in the same manner.
-
-	w = httpcap.ResponseWriter(w, rate)
-	...
-	g := iocap.NewGroup(rate)
-	w = httpcap.ResponseWriterGroup(w, g)
+See the LimitByRequestIP method for a short-hand quick start.
 */
 package httpcap
