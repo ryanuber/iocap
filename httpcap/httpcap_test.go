@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -59,6 +60,68 @@ func TestHandler(t *testing.T) {
 	}
 }
 
+func TestGroupHandler(t *testing.T) {
+	// Create some random data for the response body.
+	data := make([]byte, 512)
+	if _, err := rand.Read(data); err != nil {
+		t.Fatalf("err: %v", err)
+	}
+
+	// Create a normal HTTP handler to return data.
+	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(data)
+	}))
+
+	// Wrap the handler with a rate limit.
+	rate := iocap.RateOpts{Interval: 100 * time.Millisecond, Size: 128}
+	group := iocap.NewGroup(rate)
+	h = GroupHandler(h, group)
+
+	// Start the wrapped HTTP server.
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// Record the start time and perform two requests. They should share
+	// the same rate limit quota.
+	start := time.Now()
+
+	// Perform two requests in parallel. The shared rate limit should
+	// force this to take longer than if the requests were rate
+	// limited in isolation of each other.
+	var wg sync.WaitGroup
+	wg.Add(2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+
+			resp, err := http.Get(ts.URL)
+			if err != nil {
+				t.Fatalf("err: %v", err)
+			}
+			defer resp.Body.Close()
+
+			// Check the response body.
+			out, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("err: %v", err)
+			}
+
+			if !bytes.Equal(out, data) {
+				t.Fatal("unexpected data returned")
+			}
+		}()
+	}
+
+	// Wait for both requests to finish
+	wg.Wait()
+
+	// Check the duration of the request. Should be higher than 600ms if
+	// the rate was applied to both requests.
+	if d := time.Since(start); d < 600*time.Millisecond {
+		t.Fatalf("response returned too quickly in %s", d)
+	}
+}
+
 func ExampleHandler() {
 	// Create a normal HTTP handler to serve data.
 	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -91,14 +154,19 @@ func ExampleHandler() {
 	// Output: hello world!
 }
 
-func ExampleResponseWriter() {
-	// Create an HTTP handler with a rate limited response writer.
-	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w = ResponseWriter(w, iocap.PerSecond(1024*128)) // 128K/s
+func ExampleGroupHandler() {
+	// Create a normal HTTP handler to serve data.
+	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hello world!"))
-	})
+	}))
 
-	// Start a test server using the handler.
+	// Wrap the handler with a rate limit group. All requests to this handler
+	// will share the rate below.
+	rate := iocap.PerSecond(1024 * 128) // 128K/s
+	group := iocap.NewGroup(rate)
+	h = GroupHandler(h, group)
+
+	// Start a test server using the rate limited handler.
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 

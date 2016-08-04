@@ -14,19 +14,18 @@ type handler struct {
 	group *iocap.Group
 }
 
-// Handler creates a new rate limited HTTP handler wrapper. Each request
-// is independently rate limited according to opts.
-func Handler(h http.Handler, opts iocap.RateOpts) http.Handler {
+// Handler creates a new rate limited HTTP handler wrapper. The rate described
+// by ro is used to rate limit each request independently.
+func Handler(h http.Handler, ro iocap.RateOpts) http.Handler {
 	return &handler{
 		h:    h,
-		opts: opts,
+		opts: ro,
 	}
 }
 
-// HandlerGroup creates a new rate limited HTTP handler constrained
-// by the given rate limiting group. All requests will share the rate limit
-// held by g.
-func HandlerGroup(h http.Handler, g *iocap.Group) http.Handler {
+// GroupHandler is like Handler, but wraps an http.Handler with group rate
+// limiting such that all requests share the same quota.
+func GroupHandler(h http.Handler, g *iocap.Group) http.Handler {
 	return &handler{
 		h:     h,
 		group: g,
@@ -37,10 +36,17 @@ func HandlerGroup(h http.Handler, g *iocap.Group) http.Handler {
 // a rate limited response writer.
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.group != nil {
-		w = ResponseWriterGroup(w, h.group)
+		w = &responseWriter{
+			writer:         h.group.NewWriter(w),
+			ResponseWriter: w,
+		}
 	} else {
-		w = ResponseWriter(w, h.opts)
+		w = &responseWriter{
+			writer:         iocap.NewWriter(w, h.opts),
+			ResponseWriter: w,
+		}
 	}
+
 	h.h.ServeHTTP(w, r)
 }
 
@@ -50,23 +56,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type responseWriter struct {
 	writer *iocap.Writer
 	http.ResponseWriter
-}
-
-// ResponseWriter creates a new rate limited, wrapped response writer.
-func ResponseWriter(w http.ResponseWriter, opts iocap.RateOpts) http.ResponseWriter {
-	return &responseWriter{
-		writer:         iocap.NewWriter(w, opts),
-		ResponseWriter: w,
-	}
-}
-
-// ResponseWriterGroup returns a new rate limited http.ResponseWriter
-// constrained by the group g.
-func ResponseWriterGroup(w http.ResponseWriter, g *iocap.Group) http.ResponseWriter {
-	return &responseWriter{
-		writer:         g.NewWriter(w),
-		ResponseWriter: w,
-	}
 }
 
 // Write implements part of the http.ResponseWriter interface, calling the
