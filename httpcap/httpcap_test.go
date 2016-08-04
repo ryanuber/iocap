@@ -129,7 +129,7 @@ func ExampleHandler() {
 	}))
 
 	// Wrap the handler with a rate limit.
-	rate := iocap.PerSecond(1024 * 128) // 128K/s
+	rate := iocap.Kbps(512)
 	h = Handler(h, rate)
 
 	// Start a test server using the rate limited handler.
@@ -162,11 +162,42 @@ func ExampleGroupHandler() {
 
 	// Wrap the handler with a rate limit group. All requests to this handler
 	// will share the rate below.
-	rate := iocap.PerSecond(1024 * 128) // 128K/s
+	rate := iocap.Kbps(512)
 	group := iocap.NewGroup(rate)
 	h = GroupHandler(h, group)
 
 	// Start a test server using the rate limited handler.
+	ts := httptest.NewServer(h)
+	defer ts.Close()
+
+	// Make a request to the server.
+	resp, err := http.Get(ts.URL)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println(string(body))
+	// Output: hello world!
+}
+
+func ExampleLimitByRequestIP() {
+	// Create a normal HTTP handler to serve data.
+	h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello world!"))
+	}))
+
+	// Rate limit requests to the handler per client IP.
+	h = LimitByRequestIP(h, iocap.Kbps(512))
+
+	// Start the server.
 	ts := httptest.NewServer(h)
 	defer ts.Close()
 

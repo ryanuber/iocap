@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+const (
+	_  = (1 << (10 * iota)) / 8
+	Kb // Kilobit
+	Mb // Megabit
+	Gb // Gigabit
+)
+
 // Reader implements the io.Reader interface and limits the rate at which
 // bytes come off of the underlying source reader.
 type Reader struct {
@@ -88,12 +95,27 @@ type RateOpts struct {
 	Size int
 }
 
-// PerSecond returns a RateOpts configured to allow n bytes per second.
-func PerSecond(n int) RateOpts {
+// perSecond is an internal helper to calculate rates.
+func perSecond(n, base float64) RateOpts {
 	return RateOpts{
 		Interval: time.Second,
-		Size:     n,
+		Size:     int(n * base),
 	}
+}
+
+// Kbps returns a RateOpts configured for n kilobits per second.
+func Kbps(n float64) RateOpts {
+	return perSecond(n, Kb)
+}
+
+// Mbps returns a RateOpts configured for n megabits per second.
+func Mbps(n float64) RateOpts {
+	return perSecond(n, Mb)
+}
+
+// Gbps returns a RateOpts configured for n gigabits per second.
+func Gbps(n float64) RateOpts {
+	return perSecond(n, Gb)
 }
 
 // Group is used to group multiple readers and/or writers onto the same bucket,

@@ -131,13 +131,33 @@ func TestGroup(t *testing.T) {
 	}
 }
 
-func TestPerSecond(t *testing.T) {
-	ro := PerSecond(128)
+func TestKbps(t *testing.T) {
+	ro := Kbps(128)
 	if ro.Interval != time.Second {
 		t.Fatalf("expect 1s, got: %s", ro.Interval)
 	}
-	if ro.Size != 128 {
-		t.Fatalf("expect 128, got: %d", ro.Size)
+	if expect := Kb * 128; expect != ro.Size {
+		t.Fatalf("expect %d, got: %d", expect, ro.Size)
+	}
+}
+
+func TestMbps(t *testing.T) {
+	ro := Mbps(128)
+	if ro.Interval != time.Second {
+		t.Fatalf("expect 1s, got: %s", ro.Interval)
+	}
+	if expect := Mb * 128; expect != ro.Size {
+		t.Fatalf("expect %d, got: %d", expect, ro.Size)
+	}
+}
+
+func TestGbps(t *testing.T) {
+	ro := Gbps(128)
+	if ro.Interval != time.Second {
+		t.Fatalf("expect 1s, got: %s", ro.Interval)
+	}
+	if expect := Gb * 128; expect != ro.Size {
+		t.Fatalf("expect %d, got: %d", expect, ro.Size)
 	}
 }
 
@@ -146,7 +166,7 @@ func ExampleReader() {
 	buf := bytes.NewBufferString("hello world!")
 
 	// Create the rate limited reader.
-	rate := PerSecond(128 * 1024) // 128K/s
+	rate := Kbps(512)
 	r := NewReader(buf, rate)
 
 	// Read from the reader.
@@ -166,7 +186,7 @@ func ExampleWriter() {
 	buf := new(bytes.Buffer)
 
 	// Create the rate limited writer.
-	rate := PerSecond(128 * 1024) // 128K/s
+	rate := Kbps(512)
 	r := NewWriter(buf, rate)
 
 	// Write data into the writer.
@@ -182,7 +202,7 @@ func ExampleWriter() {
 
 func ExampleGroup() {
 	// Create a rate limiting group.
-	rate := PerSecond(128 * 1024) // 128K/s
+	rate := Kbps(512)
 	g := NewGroup(rate)
 
 	// Create a new reader and writer on the group.

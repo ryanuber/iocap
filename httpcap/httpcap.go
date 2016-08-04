@@ -2,8 +2,10 @@ package httpcap
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/ryanuber/iocap"
+	"github.com/ryanuber/iocap/httpcap/mapper"
 )
 
 // handler is a wrapper over a normal http.Handler, allowing the
@@ -30,6 +32,15 @@ func GroupHandler(h http.Handler, g *iocap.Group) http.Handler {
 		h:     h,
 		group: g,
 	}
+}
+
+// LimitByRequestIP is a convenience wrapper to automatically limit inbound
+// requests by the given rate, per client IP address. Just give it any old
+// HTTP handler and a rate.
+func LimitByRequestIP(h http.Handler, opts iocap.RateOpts) http.Handler {
+	return mapper.New(mapper.GroupByRequestIP, func(_ string) http.Handler {
+		return GroupHandler(h, iocap.NewGroup(opts))
+	}, time.Hour)
 }
 
 // ServeHTTP implements the http.Handler interface, writing responses using
