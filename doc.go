@@ -8,6 +8,13 @@ Rates can be expressed in a few different units using helper functions:
 	rate := iocap.Mbps(10)  // Megabits/s
 	rate := iocap.Gbps(1)   // Gigabits/s
 
+Rates can also be described manually with any size or interval:
+
+	rate := iocap.RateOpts{
+		Interval: time.Second,
+		Size:     5 * 1024 * 1024, // 5MB/s
+	}
+
 Readers and Writers are created by passing in an existing io.Reader or
 io.Writer along with a rate.
 
