@@ -62,3 +62,24 @@ func TestBucketDrain(t *testing.T) {
 		t.Fatal("should drain tokens")
 	}
 }
+
+func TestBucketSetRate(t *testing.T) {
+	r1 := RateOpts{Interval: 100 * time.Millisecond, Size: 256}
+	r2 := RateOpts{Interval: 500 * time.Millisecond, Size: 512}
+
+	b := newBucket(r1)
+
+	// Check that we can insert exactly r1's capacity
+	if v := b.insert(1024); v != 256 {
+		t.Fatalf("expect 256, got: %d", v)
+	}
+
+	// Update the rate opts in-place
+	b.setRate(r2)
+
+	// Check that we can insert more tokens. Make sure the previous tokens
+	// are still intact in the bucket.
+	if v := b.insert(1024); v != 256 {
+		t.Fatalf("expect 256, got: %d", v)
+	}
+}
