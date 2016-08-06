@@ -83,3 +83,20 @@ func TestBucketSetRate(t *testing.T) {
 		t.Fatalf("expect 256, got: %d", v)
 	}
 }
+
+func TestBucketUnlimitedRate(t *testing.T) {
+	// Create a bucket with an unlimited rate.
+	b := newBucket(Unlimited)
+
+	// Try inserting a huge number of tokens. Should return immediately,
+	// echoing the same number back.
+	if n := b.insert(1e16); n != 1e16 {
+		t.Fatalf("expect %d, got %d", 1e16, n)
+	}
+
+	// Try the same insert again immediately. Checks that the bucket
+	// continues to allow the full size of the insert.
+	if n := b.insert(1e16); n != 1e16 {
+		t.Fatalf("expect %d, got %d", 1e16, n)
+	}
+}

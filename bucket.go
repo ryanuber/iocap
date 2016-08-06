@@ -43,21 +43,25 @@ INSERT:
 
 	b.RLock()
 	tokens := b.tokens
-	size := b.opts.Size
+	opts := b.opts
 	b.RUnlock()
 
 	switch {
-	case tokens == size:
+	case opts == Unlimited:
+		// No limit should be applied.
+		return n
+
+	case tokens == opts.Size:
 		// Bucket is full. Call a blocking drain to wait for the next
 		// drain interval (earliest we can insert more tokens).
 		b.drain(true)
 		goto INSERT
 
-	case tokens+n > size:
+	case tokens+n > opts.Size:
 		// Some tokens, but not all, were inserted. The bucket is now
 		// full and subsequent inserts will overflow and block.
-		v = size - tokens
-		remain = size
+		v = opts.Size - tokens
+		remain = opts.Size
 
 	default:
 		// All tokens inserted successfully.

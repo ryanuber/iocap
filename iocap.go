@@ -12,6 +12,12 @@ const (
 	Gb // Gigabit
 )
 
+var (
+	// The zero-value of RateOpts is used to indicate that no rate limit
+	// should be applied to read/write operations.
+	Unlimited = RateOpts{0, 0}
+)
+
 // Reader implements the io.Reader interface and limits the rate at which
 // bytes come off of the underlying source reader.
 type Reader struct {
