@@ -90,13 +90,14 @@ func TestBucketUnlimitedRate(t *testing.T) {
 
 	// Try inserting a huge number of tokens. Should return immediately,
 	// echoing the same number back.
-	if n := b.insert(1e16); n != 1e16 {
-		t.Fatalf("expect %d, got %d", 1e16, n)
+	expect := int(1e16)
+	if n := b.insert(expect); n != expect {
+		t.Fatalf("expect %d, got %d", expect, n)
 	}
 
 	// Try the same insert again immediately. Checks that the bucket
 	// continues to allow the full size of the insert.
-	if n := b.insert(1e16); n != 1e16 {
-		t.Fatalf("expect %d, got %d", 1e16, n)
+	if n := b.insert(expect); n != expect {
+		t.Fatalf("expect %d, got %d", expect, n)
 	}
 }
