@@ -20,7 +20,7 @@ type bucket struct {
 	// lock and doing basic math.
 	tokens int
 
-	sync.RWMutex
+	l sync.RWMutex
 }
 
 // newBucket creates a new bucket to use for readers and writers.
@@ -41,10 +41,10 @@ func (b *bucket) insert(n int) (v int) {
 INSERT:
 	var remain int
 
-	b.RLock()
+	b.l.RLock()
 	tokens := b.tokens
 	opts := b.opts
-	b.RUnlock()
+	b.l.RUnlock()
 
 	switch {
 	case opts == Unlimited:
@@ -69,17 +69,17 @@ INSERT:
 		remain = tokens + n
 	}
 
-	b.Lock()
+	b.l.Lock()
 
 	// Check if the token count was modified before the lock
 	// was acquired.
 	if b.tokens != tokens {
-		b.Unlock()
+		b.l.Unlock()
 		goto INSERT
 	}
 
 	b.tokens = remain
-	b.Unlock()
+	b.l.Unlock()
 	return
 }
 
@@ -94,15 +94,15 @@ INSERT:
 // dense token expiration (short interval + high size) and heavy lock
 // contention. A possible enhancement would be to make this more granular.
 func (b *bucket) drain(wait bool) {
-	b.RLock()
+	b.l.RLock()
 	last := b.drained
 	interval := b.opts.Interval
-	b.RUnlock()
+	b.l.RUnlock()
 
 	switch {
 	case time.Since(last) >= interval:
-		b.Lock()
-		defer b.Unlock()
+		b.l.Lock()
+		defer b.l.Unlock()
 
 		// Make sure the timestamp was not updated; prevents a time-of-
 		// check vs. time-of-use error.
@@ -125,7 +125,7 @@ func (b *bucket) drain(wait bool) {
 
 // setRate safely replaces the RateOpts on the bucket.
 func (b *bucket) setRate(opts RateOpts) {
-	b.Lock()
+	b.l.Lock()
 	b.opts = opts
-	b.Unlock()
+	b.l.Unlock()
 }
