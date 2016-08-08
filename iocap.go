@@ -12,6 +12,12 @@ const (
 	Gb // Gigabit
 )
 
+var (
+	// The zero-value of RateOpts is used to indicate that no rate limit
+	// should be applied to read/write operations.
+	Unlimited = RateOpts{0, 0}
+)
+
 // Reader implements the io.Reader interface and limits the rate at which
 // bytes come off of the underlying source reader.
 type Reader struct {
@@ -49,6 +55,11 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return
 }
 
+// SetRate is used to dynamically set the rate options on the reader.
+func (r *Reader) SetRate(opts RateOpts) {
+	r.bucket.setRate(opts)
+}
+
 // Writer implements the io.Writer interface and limits the rate at which
 // bytes are written to the underlying writer.
 type Writer struct {
@@ -84,6 +95,11 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 		}
 	}
 	return
+}
+
+// SetRate is used to dynamically set the rate options on the writer.
+func (w *Writer) SetRate(opts RateOpts) {
+	w.bucket.setRate(opts)
 }
 
 // RateOpts is used to encapsulate rate limiting options.
@@ -127,6 +143,11 @@ type Group struct {
 // NewGroup creates a new rate limiting group with the specific rate.
 func NewGroup(opts RateOpts) *Group {
 	return &Group{newBucket(opts)}
+}
+
+// SetRate is used to dynamically update the rate options of the group.
+func (g *Group) SetRate(opts RateOpts) {
+	g.bucket.setRate(opts)
 }
 
 // NewWriter creates and returns a new writer in the group.

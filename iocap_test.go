@@ -44,6 +44,18 @@ func TestReader(t *testing.T) {
 	}
 }
 
+func TestReaderSetRate(t *testing.T) {
+	// Create a new reader with unlimited rate.
+	r := NewReader(new(bytes.Buffer), Unlimited)
+
+	// Set the rate to something and check it.
+	expect := RateOpts{time.Second, 1}
+	r.SetRate(expect)
+	if v := r.bucket.opts; v != expect {
+		t.Fatalf("expect %v\nactual: %v", expect, v)
+	}
+}
+
 func TestWriter(t *testing.T) {
 	// Create some random data to write.
 	data := make([]byte, 512)
@@ -73,6 +85,18 @@ func TestWriter(t *testing.T) {
 	}
 	if !bytes.Equal(buf.Bytes(), data) {
 		t.Fatal("unexpected data written")
+	}
+}
+
+func TestWriterSetRate(t *testing.T) {
+	// Create a new writer with unlimited rate.
+	w := NewWriter(new(bytes.Buffer), Unlimited)
+
+	// Set the rate to something and check it.
+	expect := RateOpts{time.Second, 1}
+	w.SetRate(expect)
+	if v := w.bucket.opts; v != expect {
+		t.Fatalf("expect %v\nactual: %v", expect, v)
 	}
 }
 
@@ -128,6 +152,18 @@ func TestGroup(t *testing.T) {
 	// two bucket drains before it completes.
 	if d := time.Since(start); d < 200*time.Millisecond {
 		t.Fatalf("finished too quickly in %s", d)
+	}
+}
+
+func TestGroupSetRate(t *testing.T) {
+	// Create a new group with unlimited rate.
+	g := NewGroup(Unlimited)
+
+	// Set the rate to something and check it.
+	expect := RateOpts{1, 1}
+	g.SetRate(expect)
+	if v := g.bucket.opts; v != expect {
+		t.Fatalf("expect: %v\nactual: %v", expect, v)
 	}
 }
 
