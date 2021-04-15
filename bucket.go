@@ -127,5 +127,6 @@ func (b *bucket) drain(wait bool) {
 func (b *bucket) setRate(opts RateOpts) {
 	b.l.Lock()
 	b.opts = opts
+	b.drained = time.Now().Add(-b.opts.Interval)
 	b.l.Unlock()
 }
